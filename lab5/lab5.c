@@ -192,6 +192,9 @@ void updateRightMotor(void) {
             // IN1 = 1, IN2 = 0
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN0);
             MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN2);
+            
+            // set direction
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN5);
 
             // Enable motor
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN6);
@@ -199,9 +202,12 @@ void updateRightMotor(void) {
 
         case motorReverse:
             // IN1 = 0, IN2 = 1
-            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN0);
-            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN2);
-
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN0);
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN2);
+            
+            // set direction
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN5);
+            
             // Enable motor
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN6);
             break;
@@ -225,17 +231,23 @@ void updateLeftMotor(void) {
 
         case motorForward:
             // IN1 = 1, IN2 = 0
-            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN4);
-            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN5);
-
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN2);
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN0);
+            
+            // set direction
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN4);
+            
             // Enable motor
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN7);
             break;
 
         case motorReverse:
             // IN1 = 0, IN2 = 1
-            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN4);
-            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN5);
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN0);
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN2);
+
+            // set direction
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN4);
 
             // Enable motor
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN7);
