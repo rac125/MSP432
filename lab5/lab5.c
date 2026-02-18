@@ -17,13 +17,20 @@
 #include <stdbool.h>
 
 // Function Prototypes
+void toggleAllLEDSONTest(void);
+void toggleAllLEDSOFFTest(void);
+
+void toggleRSLKLEDTest(void);
+
+void bumperSwitchesHandler(void);
+
 void configure432IO(void);
 void configureRobotIO(void);
-void readBumperSwitches(void);
-void updateLeftMotorLED(void);
-void updateRightMotorLED(void);
-void updateLeftMotor(void);
-void updateRightMotor(void);
+//void readBumperSwitches(void);
+void serviceLeftMotorLED(void);
+void serviceRightMotorLED(void);
+void serviceLeftMotor(void);
+void serviceRightMotor(void);
 void configPWMTimer(uint16_t clockPeriod, uint16_t clockDivider, uint16_t duty, uint16_t channel);
 
 // Global Defines
@@ -35,9 +42,13 @@ void configPWMTimer(uint16_t clockPeriod, uint16_t clockDivider, uint16_t duty, 
 
 // Typedefs to store states
 typedef enum {motorOFF,motorForward,motorReverse,motorTest} motorStates;
+typedef enum {bumperON, bumperOFF} bumperStates;
 
-//Default states
-motorStates leftMotorState, rightMotorState;
+//Current states
+motorStates leftMotorState = motorOFF;
+motorStates rightMotorState = motorOFF;
+bumperStates BMP0 = bumperOFF;
+bumperStates BMPn = bumperOFF;
 
 Timer_A_PWMConfig timerPWMConfig;
 
@@ -62,14 +73,86 @@ int main(void) {
     configPWMTimer(PERIOD, CLOCKDIVIDER, DUTY, LEFTCHANNEL);
     configPWMTimer(PERIOD, CLOCKDIVIDER, DUTY, RIGHTCHANNEL);
 
+    serviceLeftMotor();
+    serviceRightMotor();
+
+    toggleRSLKLEDTest();
+
     Timer_A_startCounter(TIMER, TIMER_A_UP_MODE);
 
-    while(1) {
-        //Update States
-        readBumperSwitches();
+    __enable_interrupts();
 
+    while(1) {
+        if (BMP0 == bumperON) {
+            //Turn On LED1
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0);
+
+            // Move Forward
+            leftMotorState  = motorForward;
+            rightMotorState = motorForward;
+
+            serviceLeftMotor();
+            serviceRightMotor();
+            serviceLeftMotorLED();
+            serviceRightMotorLED();
+
+            __delay_cycles(6000000);
+
+            while ((BMP0 == bumperOFF) && (BMPn == bumperON)) {
+
+            }
+
+            leftMotorState  = motorOFF;
+            rightMotorState = motorOFF;
+            serviceLeftMotor();
+            serviceRightMotor();
+            serviceLeftMotorLED();
+            serviceRightMotorLED();
+
+            __delay_cycles(6000000);
+
+            if (BMP0 == bumperON) {
+                leftMotorState  = motorReverse;
+                rightMotorState = motorReverse;
+
+                serviceLeftMotor();
+                serviceRightMotor();
+                serviceLeftMotorLED();
+                serviceRightMotorLED();
+
+                __delay_cycles(10000000); // travel distance delay
+
+                leftMotorState  = motorOFF;
+                rightMotorState = motorOFF;
+                serviceLeftMotor();
+                serviceRightMotor();
+                serviceLeftMotorLED();
+                serviceRightMotorLED();
+            }
+
+            BMP0 = bumperOFF;
+            BMPn = bumperOFF;
+        }
+        else {
+            MAP_GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
+            __delay_cycles(6000000);
+        }
+
+        /*
+        while (BMP0 == bumperON) {
+            leftMotorState = motorOFF;
+            rightMotorState = motorOFF;
+            serviceLeftMotor();
+            serviceRightMotor();
+        }
+        */
+
+        //Update States
+        //readBumperSwitches();
+
+        //toggleRSLKLEDTest();
         //Delay for debounce
-        __delay_cycles(1500000); //Software delay for simplicity, could configure timer with seperate base
+        //__delay_cycles(1500000); //Software delay for simplicity, could configure timer with seperate base
     }
 }
 
@@ -120,10 +203,11 @@ void configureRobotIO(void) {
     GPIO_enableInterrupt(GPIO_PORT_P4,  GPIO_PIN7 | GPIO_PIN6 | GPIO_PIN5 | GPIO_PIN3 | GPIO_PIN2 | GPIO_PIN0);
     GPIO_interruptEdgeSelect(GPIO_PORT_P4,  GPIO_PIN7 | GPIO_PIN6 | GPIO_PIN5 | GPIO_PIN3 | GPIO_PIN2 | GPIO_PIN0, GPIO_HIGH_TO_LOW_TRANSITION);
     GPIO_clearInterruptFlag(GPIO_PORT_P4,  GPIO_PIN7 | GPIO_PIN6 | GPIO_PIN5 | GPIO_PIN3 | GPIO_PIN2 | GPIO_PIN0);
-
+    MAP_GPIO_registerInterrupt(GPIO_PORT_P4, bumperSwitchesHandler);
 
 }
 
+/*
 //******************************************************************************
 // Name of Function: readBumperSwitches
 // Description: Reads bumper switches and updates wheel states and LEDs
@@ -138,47 +222,48 @@ void readBumperSwitches(void) {
     rightMotorState = motorOFF;
 
     // BMP5  (P4.7) -> Left Forward
-    if(MAP_GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN7) == GPIO_INPUT_PIN_LOW) {
+    if(BMP5 == bumperON) {
         leftMotorState = motorForward;
     }
 
     // BMP4 (P4.6) -> Left Reverse
-    else if(MAP_GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN6) == GPIO_INPUT_PIN_LOW) {
+    else if(BMP4 == bumperON) {
         leftMotorState = motorReverse;
     }
 
     // BMP3 (P4.5) -> Right Forward
-    else if(MAP_GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN5) == GPIO_INPUT_PIN_LOW) {
+    else if(BMP3 == bumperON) {
         rightMotorState = motorForward;
     }
 
     // BMP2 (P4.3) -> BOTH Forward
-    else if(MAP_GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN3) == GPIO_INPUT_PIN_LOW) {
+    else if(BMP2 == bumperON) {
         leftMotorState  = motorForward;
         rightMotorState = motorForward;
     }
 
     // BMP1 (P4.2) -> BOTH Reverse
-    else if(MAP_GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN2) == GPIO_INPUT_PIN_LOW) {
+    else if(BMP1 == bumperON) {
         leftMotorState  = motorReverse;
         rightMotorState = motorReverse;
     }
 
     // BMP0 (P4.0) -> Right Reverse
-    else if(MAP_GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN0) == GPIO_INPUT_PIN_LOW) {
+    else if(BMP0 == bumperON) {
         rightMotorState = motorReverse;
     }
 
     // Update motor states
-    updateLeftMotor();
-    updateRightMotor();
+    serviceLeftMotor();
+    serviceRightMotor();
 
     // Update LEDs based on new states
-    updateLeftMotorLED();
-    updateRightMotorLED();
+    serviceLeftMotorLED();
+    serviceRightMotorLED();
 }
+*/
 
-void updateRightMotor(void) {
+void serviceRightMotor(void) {
     switch(rightMotorState) {
         case motorOFF:
             // Disable motor
@@ -193,14 +278,20 @@ void updateRightMotor(void) {
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN0);
             MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN2);
 
+            // set direction
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN5);
+
             // Enable motor
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN6);
             break;
 
         case motorReverse:
             // IN1 = 0, IN2 = 1
-            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN0);
-            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN2);
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN0);
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN2);
+
+            // set direction
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN5);
 
             // Enable motor
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN6);
@@ -213,7 +304,7 @@ void updateRightMotor(void) {
     }
 }
 
-void updateLeftMotor(void) {
+void serviceLeftMotor(void) {
     switch(leftMotorState) {
         case motorOFF:
             // Disable motor
@@ -225,8 +316,11 @@ void updateLeftMotor(void) {
 
         case motorForward:
             // IN1 = 1, IN2 = 0
-            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN4);
-            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN5);
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN2);
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN0);
+
+            // set direction
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN4);
 
             // Enable motor
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN7);
@@ -234,8 +328,11 @@ void updateLeftMotor(void) {
 
         case motorReverse:
             // IN1 = 0, IN2 = 1
-            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN4);
-            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN5);
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN0);
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN2);
+
+            // set direction
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN4);
 
             // Enable motor
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN7);
@@ -249,7 +346,7 @@ void updateLeftMotor(void) {
     }
 }
 
-void updateLeftMotorLED(void) {
+void serviceLeftMotorLED(void) {
     switch(leftMotorState) {
     case motorOFF:
         // RSLK LED Front and Rear OFF
@@ -274,7 +371,7 @@ void updateLeftMotorLED(void) {
     }
 }
 
-void updateRightMotorLED(void) {
+void serviceRightMotorLED(void) {
     switch(rightMotorState) {
     case motorOFF:
         // RSLK LED Front and Rear OFF
@@ -297,6 +394,87 @@ void updateRightMotorLED(void) {
         MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P8, GPIO_PIN7);
         break;
     }
+}
+
+void toggleAllLEDSONTest(void) {
+    MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P8, GPIO_PIN0 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7);
+}
+
+void toggleAllLEDSOFFTest(void) {
+    MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P8, GPIO_PIN0 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7);
+}
+
+void toggleRSLKLEDTest(void) {
+    toggleAllLEDSONTest();
+    __delay_cycles(9000000);
+    toggleAllLEDSOFFTest();
+}
+
+void bumperSwitchesHandler(void) {
+    uint16_t status;
+    _delay_cycles(30000);
+    status = MAP_GPIO_getEnabledInterruptStatus(GPIO_PORT_P4);
+    switch(status){
+        case GPIO_PIN6: //BPM5
+            if (BMPn == bumperOFF) {
+                BMPn = bumperON;
+            }
+            else {
+                BMPn = bumperOFF;
+            }
+            //GPIO_clearInterruptFlag(GPIO_PORT_P4, GPIO_PIN6);
+            break;
+        case GPIO_PIN5: //BMP4
+            if (BMPn == bumperOFF) {
+                BMPn = bumperON;
+            }
+            else {
+                BMPn = bumperOFF;
+            }
+            //GPIO_clearInterruptFlag(GPIO_PORT_P4, GPIO_PIN5);
+            break;
+        case GPIO_PIN4: //BPM3
+            if (BMPn == bumperOFF) {
+                BMPn = bumperON;
+            }
+            else {
+                BMPn = bumperOFF;
+            }
+            //GPIO_clearInterruptFlag(GPIO_PORT_P4, GPIO_PIN4);
+            break;
+        case GPIO_PIN3: //BMP2
+            if (BMPn == bumperOFF) {
+                BMPn = bumperON;
+            }
+            else {
+                BMPn = bumperOFF;
+            }
+            //GPIO_clearInterruptFlag(GPIO_PORT_P4, GPIO_PIN3);
+            break;
+        case GPIO_PIN2: //BMP1
+            if (BMPn == bumperOFF) {
+                BMPn = bumperON;
+            }
+            else {
+                BMPn = bumperOFF;
+            }
+            //GPIO_clearInterruptFlag(GPIO_PORT_P4, GPIO_PIN2);
+            break;
+        case GPIO_PIN0: // BMP0
+            if (BMP0 == bumperOFF) {
+                BMP0 = bumperON;
+            }
+            else {
+                BMP0 = bumperOFF;
+            }
+            //GPIO_clearInterruptFlag(GPIO_PORT_P4, GPIO_PIN0);
+            break;
+        //End of Case
+    }
+
+    MAP_GPIO_clearInterruptFlag(GPIO_PORT_P4, status);
+
+    //readBumperSwitches();
 }
 
 //******************************************************************************
