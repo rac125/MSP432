@@ -17,13 +17,18 @@
 #include <stdbool.h>
 
 // Function Prototypes
+void toggleAllLEDSONTest(void);
+void toggleAllLEDSOFFTest(void);
+
+void toggleRSLKLEDTest(void);
+
 void configure432IO(void);
 void configureRobotIO(void);
 void readBumperSwitches(void);
-void updateLeftMotorLED(void);
-void updateRightMotorLED(void);
-void updateLeftMotor(void);
-void updateRightMotor(void);
+void serivceLeftMotorLED(void);
+void serviceRightMotorLED(void);
+void serviceLeftMotor(void);
+void serviceRightMotor(void);
 void configPWMTimer(uint16_t clockPeriod, uint16_t clockDivider, uint16_t duty, uint16_t channel);
 
 // Global Defines
@@ -68,6 +73,7 @@ int main(void) {
         //Update States
         readBumperSwitches();
 
+        //toggleRSLKLEDTest();
         //Delay for debounce
         __delay_cycles(1500000); //Software delay for simplicity, could configure timer with seperate base
     }
@@ -170,15 +176,15 @@ void readBumperSwitches(void) {
     }
 
     // Update motor states
-    updateLeftMotor();
-    updateRightMotor();
+    serviceLeftMotor();
+    serviceRightMotor();
 
     // Update LEDs based on new states
-    updateLeftMotorLED();
-    updateRightMotorLED();
+    serivceLeftMotorLED();
+    serviceRightMotorLED();
 }
 
-void updateRightMotor(void) {
+void serviceRightMotor(void) {
     switch(rightMotorState) {
         case motorOFF:
             // Disable motor
@@ -193,14 +199,20 @@ void updateRightMotor(void) {
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN0);
             MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN2);
 
+            // set direction
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN5);
+
             // Enable motor
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN6);
             break;
 
         case motorReverse:
             // IN1 = 0, IN2 = 1
-            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN0);
-            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN2);
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN0);
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN2);
+
+            // set direction
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN5);
 
             // Enable motor
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN6);
@@ -213,7 +225,7 @@ void updateRightMotor(void) {
     }
 }
 
-void updateLeftMotor(void) {
+void serviceLeftMotor(void) {
     switch(leftMotorState) {
         case motorOFF:
             // Disable motor
@@ -225,8 +237,11 @@ void updateLeftMotor(void) {
 
         case motorForward:
             // IN1 = 1, IN2 = 0
-            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN4);
-            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN5);
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN2);
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN0);
+
+            // set direction
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN4);
 
             // Enable motor
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN7);
@@ -234,8 +249,11 @@ void updateLeftMotor(void) {
 
         case motorReverse:
             // IN1 = 0, IN2 = 1
-            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN4);
-            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN5);
+            MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN0);
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN2);
+
+            // set direction
+            MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN4);
 
             // Enable motor
             MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN7);
@@ -249,7 +267,7 @@ void updateLeftMotor(void) {
     }
 }
 
-void updateLeftMotorLED(void) {
+void serivceLeftMotorLED(void) {
     switch(leftMotorState) {
     case motorOFF:
         // RSLK LED Front and Rear OFF
@@ -274,7 +292,7 @@ void updateLeftMotorLED(void) {
     }
 }
 
-void updateRightMotorLED(void) {
+void serviceRightMotorLED(void) {
     switch(rightMotorState) {
     case motorOFF:
         // RSLK LED Front and Rear OFF
@@ -298,6 +316,21 @@ void updateRightMotorLED(void) {
         break;
     }
 }
+
+void toggleAllLEDSONTest(void) {
+    MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P8, GPIO_PIN0 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7);
+}
+
+void toggleAllLEDSOFFTest(void) {
+    MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P8, GPIO_PIN0 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7);
+}
+
+void toggleRSLKLEDTest(void) {
+    toggleAllLEDSONTest();
+    __delay_cycles(9000000);
+    toggleAllLEDSOFFTest();
+}
+
 
 //******************************************************************************
 // Name of Function: configPWMTimer
