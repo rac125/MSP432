@@ -636,3 +636,35 @@ void configPWMTimer(uint16_t clockPeriod, uint16_t clockDivider, uint16_t duty, 
     MAP_Timer_A_generatePWM(TIMER, &timerPWMConfig);
     MAP_Timer_A_stopTimer(TIMER);
 }
+void powerUpLEDSON(void) {
+    MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P8, GPIO_PIN0 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7);
+    MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0);
+    MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN0, GPIO_PIN1, GPIO_PIN2);
+    
+}
+
+//******************************************************************************
+// Name of Function: toggleAllLEDSOFFTest
+// Description: Turns all LEDS off. Used as a helper function in test mode.
+// Input Parameters: void
+// Return: none
+// Author: Rafael Cano
+//******************************************************************************
+void powerUpLEDSOFF(void) {
+    MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P8, GPIO_PIN0 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7);
+    MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
+    MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0, GPIO_PIN1, GPIO_PIN2);
+}
+
+//******************************************************************************
+// Name of Function: toggleRSLKLEDTest
+// Description: Turns all LEDS of, after a 3 second delay, turns all LEDs off.
+// Input Parameters: void
+// Return: none
+// Author: Rafael Cano
+//******************************************************************************
+void toggleRSLKLEDTest(void) {
+    powerUpLEDSON();
+    __delay_cycles(9000000); //aprox. 3 seconds
+    powerUpLEDSOFF();
+}
